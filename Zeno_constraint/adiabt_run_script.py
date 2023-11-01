@@ -5,6 +5,8 @@ import zeno_constraint as zc
 import matplotlib.pyplot as plt
 import time
 
+render_plot=False # set to true to render the plot
+
 Z3=np.zeros([3,3])
 Z3[1,1]=1
 Z3[2,2]=-1
@@ -56,8 +58,9 @@ for i_const_str in range(len(str_list)):
         #plt.show()
         print('total sweep calculation time= '+str(time.time()-t_start))
     np.save('adiabat_2_sweep_constrain.npy',{'t_anneal_list':t_anneal_list,'final_success_probs': final_success_probs_nI2,'constraint_str_list':str_list})
-    #plt.semilogx(str_list,final_success_probs_nI2)
-    #plt.show()
+    if render_plot:
+        plt.semilogx(str_list,final_success_probs_nI2)
+        plt.show()
 
 #str_list=np.logspace(-1,3,200)
 #t_anneal_list=[5,10,100]

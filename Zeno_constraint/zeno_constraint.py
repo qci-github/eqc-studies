@@ -36,7 +36,7 @@ def construct_quadratic_Hamiltonian(M,J,h): # constructs a quadratic Hamiltonian
     
 def kron_ith_position_vec(V,i_pos,n_var): # uses tensor products to create a matrix with an identity at all positions except for the ith assumes all variables have the same size which is the size of M
     '''
-        M is the vector to be place at position i_pos
+        V is the vector to be place at position i_pos
         i_pos is the position where the vector should be placed
         n_var is the total number of variables
         returns a 1D vector
@@ -72,7 +72,7 @@ def multi_qubit_rotate_disp_ham(theta,n_qubit): # creates a multi-qubit dissipat
 def multi_qubit_measure_project_xi(theta,n_qubit): # creates a projector which projects out the xi state at each qubit
     '''
         theta is an angle used to rotate between an undefined state and the |+> state, theta=0 defines full rotation into the undefined state, theta= pi/2 is fully in |+>
-        n is the number of qubit variables, n.b. because of the undefined state, the size of the total matrix is 3^n_qubit
+        n_qubit is the number of qubit variables, n.b. because of the undefined state, the size of the total matrix is 3^n_qubit
     '''
     P_single=np.eye(3)-1j*rotate_disp_ham(theta) # projector for a single qubit
     P=np.eye(3**n_qubit) # identity
@@ -265,7 +265,7 @@ def zeno_sweep_H_expm_mult(H_s,t_tot,start_state,measure_func,num_step=1000,meth
 def qubit_variable_pm_tilde_transform(theta): # Gives a single variable transform to the plus tilde minus tilde basis
     '''
         theta is the rotation angle for the projection in the three-state space
-        P is a matrix where the first column corresponds to + tilde and the second to - tilde in the 0, 1 basis
+        returns P, a matrix where the first column corresponds to + tilde and the second to - tilde in the 0, 1 basis
     '''
     P=np.array([[np.cos(theta),1],[np.cos(theta),-1]])/np.sqrt(2)
     return P
@@ -273,7 +273,7 @@ def qubit_variable_pm_tilde_transform(theta): # Gives a single variable transfor
 def project_to_allowed_states(allowed_state): # allowed states is a boolean vector of states which are allowed
     '''
         allowed_states is vector with zeros corresponding to non-allowed states
-        P is a matrix which projects from a larger set of states to a smaller set of allowed states
+        Returns P, a matrix which projects from a larger set of states to a smaller set of allowed states
     '''
     nz_positions=list(np.where(allowed_state)[0]) # find non-zero elements and convert to list
     indices=[(nz_positions[i],i) for i in range(len(nz_positions))] # use list comprehension to list coordinates
