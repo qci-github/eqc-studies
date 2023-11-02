@@ -1,0 +1,14 @@
+This is the code used to create the numerical results which can be found in "Zeno-effect Computation: Opportunities and Challenges", by Jesse Berwald, Nicholas Chancellor, and Raouf Dridi, arXiv:XXXXXX. The code contained in this folder was written by Nicholas Chancellor, and was written for Quantum Computing Inc. 
+
+The majority of the functions used for numerical calculations can be found in a custom python module named "zeno_constraint.py", All data plots were created in a Jupyter notebook, and saved in the "figures" folder. Most of these figures can be created by performing the necessary numerical evaluations while running the notebook, but some ".npy" files are used to save data from longer runs and to save randomly generated test problems for reproducibility. 
+
+Files from which data are loaded for plotting are "many_sat_prob_final_adiabat_0p1_off.npy", "many_sat_prob_final_adiabat_no_off.npy", "adiabat_2_sweep_constrain.npy", "adiabat_3_sweep_constrain.npy". 
+
+The scripts "adiabt_run_script.py" "meas_only_script.py" are for performing longer data runs which are too long to be effectively run in a Jupyter notebook.
+
+There are two files which contain randomly generated problems for reproducibility purposes "unique_3_sat_5_1690552185.884515.npy" contains the randomly generated three satisfiability problem references in the paper, while "random_h5.npy" contains a set of random field strengths.
+
+The notebook "3D_plots.ipynb" is used to create the three dimensional visualisations: "visualisation_3d_forbid_0_1.png", "visualisation_3d_forbid_0.png", and "visualisation_3d.png". 
+
+
+
