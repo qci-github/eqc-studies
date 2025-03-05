@@ -90,6 +90,7 @@ def objective(trial):
 
 
 if __name__ == "__main__":
+    os.makedirs("figures", exist_ok=True)
     # set seeds for reproducibility
     sampler = TPESampler(seed=13)
     np.random.seed(13)
@@ -154,7 +155,7 @@ if __name__ == "__main__":
     plt.legend(loc="upper left", bbox_to_anchor=(0.7, 0.8), fontsize=10)
     ax = plt.gca()
     ax.set_facecolor('#F6F3ED')
-    plt.gcf().savefig("grad_vs_dirac.svg", format="svg")
+    plt.gcf().savefig("figures/grad_vs_dirac.svg", format="svg")
 
     # Show the plot
     plt.show()
@@ -205,7 +206,7 @@ if __name__ == "__main__":
     ax.set_ylabel('$i$',fontsize=10)
     ax.set_zlabel('$x_i$', fontsize=10, rotation = 180)
 
-    fig.savefig("coefficients_iterations.svg", format="svg", dpi=300)
+    fig.savefig("figures/coefficients_iterations.svg", format="svg", dpi=300)
     plt.show()
 
     # Create energy histogram for grad vs eqc
@@ -227,5 +228,5 @@ if __name__ == "__main__":
     ax.legend(loc="upper right", frameon=True, facecolor="#F6F3ED", edgecolor="black")
     plt.tight_layout()
 
-    fig.savefig("dirac_vs_grad_energy.svg", format="svg", dpi=300)
+    fig.savefig("figures/dirac_vs_grad_energy.svg", format="svg", dpi=300)
     plt.show()

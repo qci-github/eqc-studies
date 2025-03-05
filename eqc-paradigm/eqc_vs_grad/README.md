@@ -6,8 +6,8 @@ The data used in the scripts was developed using an experimental version of a en
 generate the plots in the paper. The requirements file provides details on python version as well as package version that were. Additionally,
 the original script that was used to produce the plot is provided. As a final note the data is stored as a zip files to reduce the memory footprint
 form the runs and allow them to be  stored in github. The script will unzip the results files for eqc results and then generate
-three plots in order to continue running the script simply exit the plots as they pop up  they are also saved in local directory
-as svg formatted images if want to look at after running the script.
+three plots in order to continue running the script simply exit the plots as they pop up they are also saved in the figures directory
+as svg formatted images when the script is run.
 
 ### Contents
 - QPLIB_0018_OBJ.csv: qplib 18 problem that was used for the comparison of grad and eqc
