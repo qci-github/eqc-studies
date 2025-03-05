@@ -94,9 +94,10 @@ if __name__ == "__main__":
     sampler = TPESampler(seed=13)
     np.random.seed(13)
     # extract eqc data into current directory from zip file
-    zip_file_path = 'eqc_qplib18_500_runs.zip'
-    with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
-        zip_ref.extractall(".")
+    for i in range(5):
+        zip_file_path = f"data/results_{i}.zip"
+        with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
+            zip_ref.extractall("data")
 
     # Load QPLIB problem data
     C = 1.0  # Constraint sum(x) = C
