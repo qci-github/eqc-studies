@@ -1,0 +1,5 @@
+# PYTHON_VERSION=3.12.3
+numpy==2.2.3
+matplotlib==3.10.1
+jax==0.5.1
+optuna==4.2.1
