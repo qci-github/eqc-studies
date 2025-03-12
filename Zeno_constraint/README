@@ -1,4 +1,4 @@
-This is the code used to create the numerical results which can be found in "Zeno-effect Computation: Opportunities and Challenges", by Jesse Berwald, Nicholas Chancellor, and Raouf Dridi, arXiv:XXXXXX. The code contained in this folder was written by Nicholas Chancellor, and was written for Quantum Computing Inc. 
+This is the code used to create the numerical results which can be found in "Zeno-effect Computation: Opportunities and Challenges", by Jesse Berwald, Nicholas Chancellor, and Raouf Dridi, arXiv:2311.08432. The code contained in this folder was written by Nicholas Chancellor, and was written for Quantum Computing Inc. 
 
 The majority of the functions used for numerical calculations can be found in a custom python module named "zeno_constraint.py", All data plots were created in a Jupyter notebook, and saved in the "figures" folder. Most of these figures can be created by performing the necessary numerical evaluations while running the notebook, but some ".npy" files are used to save data from longer runs and to save randomly generated test problems for reproducibility. 
 
