@@ -5,7 +5,7 @@ Code and data associated with
 by Mohammad-Ali Miri, Uchenna Chukwu, and
 Nicholas Chancellor
 
-#### arXiv: XXXXXX #####
+#### arXiv: 2604.13032 #####
 
 
 #### This code was written by Nicholas Chancellor and written for Quantum Computing Inc. 
