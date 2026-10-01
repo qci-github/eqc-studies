@@ -325,26 +325,44 @@ def make_forbid_mat_MIS(MIS_adj): # makes a 2**n by 2**n diagonal matrix with 0 
     forbid_mat=sparse.csr_array(sparse.dia_array((keep_elements,0),shape=(2**n_qubit,2**n_qubit))) # make sparse array which removes forbidden entries
     return forbid_mat
 
-def single_mode_Op_layer(Op_list,factorised=False,forbid_mat=None): # takes a list of superoperators and makes a layer of operators
+def single_mode_Op_layer(Op_list,factorised=False,forbid_mat=None,expm_gen=False,num_powers=30): # takes a list of operators and makes a layer of operators
     '''
         Op_list is a list of the operators applied on each mode, the size of the subspace and number of subspaces are implied from this list
         factorised is a boolean switch, if set to True it returns a list of each operator rather than taking product to preserve sparseness
         forbid_mat is a matrix used to implement idealised constraints when building a generator layer, set to None and not used by default
+        expm_gen is a boolean flag which if set to True crates a binary decomposition of the matrix exponential rather than returning just the matrix, only valid if factorised is set to True as well
+        num_powers is the number of powers to use in a binary approximation, defaults to 30
     '''
     n_sub=Op_list[0].shape[0] # size of the subspace which is acted on by each operator (assumend to all be the same)
     sub_count=len(Op_list) # count of subspaces
+    if expm_gen and not factorised:
+        RuntimeError('Invalid combination of parameters: you set expm_gen=True while factorise=False, no behaviour is defined in this setting')
     for index_add in range(len(Op_list)): # loop through to build total superoperator
         if index_add==0: # create operator initially
             if factorised:
-                Op_total=[single_subspace_Op_term_from_mat(Op_list[index_add],n_sub,sub_count,index_add)] # first element in list
+                Op=single_subspace_Op_term_from_mat(Op_list[index_add],n_sub,sub_count,index_add)
+                if expm_gen:
+                    if type(forbid_mat)==type(None):
+                        Op_total=[dme.construct_expm_binary_approx(Op,max_exp=np.pi,num_powers=num_powers)]
+                    else:
+                        Op_total=[dme.construct_expm_binary_approx(forbid_mat@Op@forbid_mat,max_exp=np.pi,num_powers=num_powers)]
+                else:
+                    Op_total=[copy.copy(Op)] # first element in list
             else:
                 Op_total=single_subspace_Op_term_from_mat(Op_list[index_add],n_sub,sub_count,index_add) # first superoperator in product
         else:
             if factorised:
-                Op_total=Op_total+[single_subspace_Op_term_from_mat(Op_list[index_add],n_sub,sub_count,index_add)] # add to list
+                Op=single_subspace_Op_term_from_mat(Op_list[index_add],n_sub,sub_count,index_add)
+                if expm_gen:
+                    if type(forbid_mat)==type(None):
+                        Op_total=Op_total+[dme.construct_expm_binary_approx(Op,max_exp=np.pi,num_powers=num_powers)]
+                    else:
+                        Op_total=Op_total+[dme.construct_expm_binary_approx(forbid_mat@Op@forbid_mat,max_exp=np.pi,num_powers=num_powers)]
+                else:
+                    Op_total=Op_total+[copy.copy(Op)] # add to list
             else:
                 Op_total=single_subspace_Op_term_from_mat(Op_list[index_add],n_sub,sub_count,index_add)@Op_total # take product to build total operator
-    if not type(forbid_mat)==type(None): # if a matrix is supplied to forbid some states
+    if not type(forbid_mat)==type(None) and not expm_gen: # if a matrix is supplied to forbid some states
         if factorised:
             Op_total_orig=copy.copy(Op_total)
             Op_total=[]
@@ -507,7 +525,7 @@ def construct_normalised_drive_gen_list_Op(MIS_adj,drive_H,driving_sequence='bef
             raise RuntimeError("unrecognised driving sequence: '"+driving_sequence+"' allowed options are 'before', 'after', 'ideal', or 'both'")
     return drive_gens
     
-def construct_gen_dict_drive_interaction_Op(int_mat,drive_gens,n_sub,sub_count,indices_list,forbid_mat=None): # function to pre-compute all necessary tensor products so that none are performed in the inner loop
+def construct_gen_dict_drive_interaction_Op(int_mat,drive_gens,n_sub,sub_count,indices_list,forbid_mat=None,expm_gen=False,num_powers=30): # function to pre-compute all necessary tensor products so that none are performed in the inner loop
     '''
         int_mat is an n_sub**2 matrix defining the interaction operator
         n_sub is the size of each subspace
@@ -515,9 +533,11 @@ def construct_gen_dict_drive_interaction_Op(int_mat,drive_gens,n_sub,sub_count,i
         sub_count is the total number of subspaces (must be at least 2 to have an interaction
         indices_list is a list of index pairs)
         forbid_mat is a matrix to forbid certain configurations, used when an idealised version of driving is employed
+        expm_gen is a flag which determines whether the matrices are create directly or binary decompositions to indirectly construct time evolution, defaults to False which means generator matrices are produced
+        num_powers is the number of powers used in the generation of the binary decomposition, defualts to 30, does nothing if expm_gen is set to false
     '''
     gen_dict={} # empty dictionary
-    gen_dict['drive_gens']=single_mode_Op_layer(drive_gens,factorised=True,forbid_mat=forbid_mat) # build a layer of superoperators containing all the driving generators
+    gen_dict['drive_gens']=single_mode_Op_layer(drive_gens,factorised=True,forbid_mat=forbid_mat,expm_gen=expm_gen,num_powers=num_powers) # build a layer of superoperators containing all the driving generators
     gen_dict['indices_list']=indices_list # add list of indices to dictionary
     gen_dict['int_list']=[] # empty list to populate with interaction superoperators
     for i_network in range(len(indices_list)): # loop through interactions
@@ -569,13 +589,22 @@ def construct_drive_interaction_Op_network_from_gen_dict(gen_dict,tot_rotation,d
     if driving_sequence=='ideal':
         int_total=np.eye(n_sub**(sub_count))
         for i_drive in range(len(gen_dict['drive_gens'])):
-            int_total=linalg_d.expm(gen_dict['drive_gens'][i_drive]*tot_rotation)@int_total
+            if type(gen_dict['drive_gens'][i_drive])==type({}):
+                int_total=dme.fast_expm_from_dict(gen_dict['drive_gens'][i_drive],tot_rotation)@int_total
+            else:
+                int_total=linalg_d.expm(gen_dict['drive_gens'][i_drive]*tot_rotation)@int_total
         return int_total
     if len(indices_list)==0:
         return np.eye(n_sub**(sub_count))
+    gen_list=[]
+    for i_gen in range(len(gen_dict['drive_gens'])):
+        if type(gen_dict['drive_gens'][i_gen])==type({}):
+            gen_list=gen_list+[dme.fast_expm_from_dict(gen_dict['drive_gens'][indices_list[i_network][0]],tot_rotation)]
+        else:
+            gen_list=gen_list+[linalg_d.expm(gen_dict['drive_gens'][indices_list[i_network][0]]*tot_rotation)]
     for i_network in range(len(indices_list)):
-        drive_add=linalg_d.expm(gen_dict['drive_gens'][indices_list[i_network][0]]*tot_rotation)
-        drive_add=linalg_d.expm(gen_dict['drive_gens'][indices_list[i_network][1]]*tot_rotation)@drive_add
+        drive_add=gen_list[indices_list[i_network][0]]
+        drive_add=gen_list[indices_list[i_network][1]]@drive_add
         int_add=gen_dict['int_list'][i_network]
         if driving_sequence=='before':
             tot_add=int_add@drive_add
@@ -878,7 +907,7 @@ def MIS_apply_phase(phi=np.pi): # matrix for appying a phase to enforce independ
     mat[3,3]=np.exp(1j*phi)
     return mat
     
-def idealised_state_vector_anneal_wmis(Op_drive,phase_schedule,MIS_adj,driving='monolithic',driving_schedule=None,renormalize=False,interaction_Op=MIS_remove_mat(),phase_weights=None,intermediate_calc_functions=None): # applies an idealised anneal to solve a weighted maximum independent set in a state-vector representation
+def idealised_state_vector_anneal_wmis(Op_drive,phase_schedule,MIS_adj,driving='monolithic',driving_schedule=None,renormalize=False,interaction_Op=MIS_remove_mat(),phase_weights=None,intermediate_calc_functions=None,precomp_gen_dict=None,num_powers=30): # applies an idealised anneal to solve a weighted maximum independent set in a state-vector representation
     '''
         Op_drive is a single subspace operator which drives the system, or the Hamiltonian which generates that operator (or a list of Hamiltonians each multiplied by -1j) if a driving schedule is supplied can be supplied as a list to give different driving on different modes
         phase_schedule is an iterable containing all the phases applied at different point
@@ -888,6 +917,8 @@ def idealised_state_vector_anneal_wmis(Op_drive,phase_schedule,MIS_adj,driving='
         renormalization is a boolean which determines if the state vector should be renormalized each cycle
         phase_weights is an array of positive weights on each node, defaults to None in which case an unweighted problem is solved
         intermediate_calc_function is a function which calculates statistics for intermediate points in evolution, defaults to None, in which case nothing is applied
+        precomp_gen_dict is either a precomputed generator dictionary, or can be overloaded and set to True, in which case the function only returns the precomputed dictionary 
+        num_powers is the number of powers to use in a binary decomposition if one is performed, defaults to 30
     '''
     num_qubits=MIS_adj.shape[0] # the number of qubit subspaces to be used
     (pos_inds_list,neg_inds_list)=phase_Op_0_1_pos_and_neg_inds(num_qubits) # pre-computed diagonal indices to make inner loop faster
@@ -902,21 +933,26 @@ def idealised_state_vector_anneal_wmis(Op_drive,phase_schedule,MIS_adj,driving='
     else:
         drive_layer_Ops=single_mode_Op_layer(Op_drive,factorised=True,forbid_mat=forbid_mat) # make an operator for driving based on supplied list
     indices_list=[]
-    for i_MIS in range(num_qubits): # first adjacency index
-        for j_MIS in range(i_MIS+1,num_qubits): # second adjacency index
-            if not MIS_adj[i_MIS,j_MIS]==0: # if a non-zero entry in the adjacency matrix
-                indices_list=indices_list+[[i_MIS,j_MIS]] # add to list of indices to create network to apply independence condition
-    if driving=='monolithic': # driving done separately in monolithic case
-        ind_layer=construct_interaction_Op_network_from_mat(interaction_Op,2,num_qubits,indices_list)
-    else: # otherwise layers are combined
-        if not type(Op_drive)==type([]): # if a single operator rather than a list of operators
-            Op_drive=construct_normalised_drive_gen_list_Op(MIS_adj,Op_drive,driving_sequence=driving)
-        if type(driving_schedule)==type(None):
-            gen_dict=construct_gen_dict_drive_interaction_Op(interaction_Op,Op_drive,2,num_qubits,indices_list,forbid_mat=forbid_mat)
-            ind_layer=construct_drive_interaction_Op_network_from_gen_dict(gen_dict,1,driving_sequence=driving)
-            #ind_layer=construct_drive_interaction_Op_network_from_mat(interaction_Op,drive_layer_Ops,2,num_qubits,indices_list,driving_sequence=driving) # if no schedule make layer once
-        else:
-            gen_dict=construct_gen_dict_drive_interaction_Op(interaction_Op,Op_drive,2,num_qubits,indices_list,forbid_mat=forbid_mat) # otherwise produce a dictionary for final generation
+    if type(precomp_gen_dict)==type(None) or (type(precomp_gen_dict)==type(True) and precomp_gen_dict): # if precomputed values are not provided and not asked to perform a precomputation
+        for i_MIS in range(num_qubits): # first adjacency index
+            for j_MIS in range(i_MIS+1,num_qubits): # second adjacency index
+                if not MIS_adj[i_MIS,j_MIS]==0: # if a non-zero entry in the adjacency matrix
+                    indices_list=indices_list+[[i_MIS,j_MIS]] # add to list of indices to create network to apply independence condition
+        if driving=='monolithic': # driving done separately in monolithic case
+            ind_layer=construct_interaction_Op_network_from_mat(interaction_Op,2,num_qubits,indices_list)
+        else: # otherwise layers are combined
+            if not type(Op_drive)==type([]): # if a single operator rather than a list of operators
+                Op_drive=construct_normalised_drive_gen_list_Op(MIS_adj,Op_drive,driving_sequence=driving)
+            if type(driving_schedule)==type(None):
+                gen_dict=construct_gen_dict_drive_interaction_Op(interaction_Op,Op_drive,2,num_qubits,indices_list,forbid_mat=forbid_mat,expm_gen=True,num_powers=num_powers)
+                ind_layer=construct_drive_interaction_Op_network_from_gen_dict(gen_dict,1,driving_sequence=driving)
+                #ind_layer=construct_drive_interaction_Op_network_from_mat(interaction_Op,drive_layer_Ops,2,num_qubits,indices_list,driving_sequence=driving) # if no schedule make layer once
+            else:
+                gen_dict=construct_gen_dict_drive_interaction_Op(interaction_Op,Op_drive,2,num_qubits,indices_list,forbid_mat=forbid_mat,expm_gen=True,num_powers=num_powers) # otherwise produce a dictionary for final generation
+        if type(precomp_gen_dict)==type(True) and precomp_gen_dict: # if the function is being used to perform a precomputation
+            return gen_dict
+    elif type(precomp_gen_dict)==type({}):
+        gen_dict=copy.copy(precomp_gen_dict)
     intermediate_data_list=[] # empty list for intermediate data
     for iStage in range(len(phase_schedule)): # each stage of evolution
         if type(phase_weights)==type(None): # if undefined, then create array of equal weights
